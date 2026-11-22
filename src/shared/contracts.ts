@@ -1,7 +1,22 @@
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low';
 export type RuleStatus = 'VERIFIED_COMPLETE' | 'REMEDIATION_REQUIRED' | 'BLOCKED' | 'NOT RUN' | 'NOT_REQUIRED';
 export interface Finding { id:string; title:string; category:string; severity:Severity; status:RuleStatus; detail:string; evidence:string[]; nextStep:string; }
-export interface ScanReport { id:string; repository:string; owner:string; name:string; commit:string; branch:string; scannedAt:string; files:number; exclusions:{path:string;reason:string}[]; score:number; weightComplete:number; weightInScope:number; counts:Record<Severity,number>; findings:Finding[]; durability:'mongodb'|'volatile'; notes:string[]; }
+export interface FileInventoryEntry { path:string; size:number|null; contentStatus:'TEXT_INSPECTED'|'NOT_INSPECTED'; reason?:string; }
+export interface ScanCoverage {
+  inventoryComplete:boolean;
+  totalFiles:number;
+  totalBytes:number;
+  contentInspected:number;
+  contentOmitted:number;
+  contentBytes:number;
+  exclusionsTruncated:boolean;
+  inventoryEntriesReturned:number;
+  inventoryEntriesTruncated:boolean;
+  executionStatus:'BLOCKED';
+  executedFiles:0;
+  executionReason:string;
+}
+export interface ScanReport { id:string; repository:string; owner:string; name:string; commit:string; branch:string; scannedAt:string; files:number; fileInventory:FileInventoryEntry[]; exclusions:{path:string;reason:string}[]; coverage:ScanCoverage; score:number; weightComplete:number; weightInScope:number; counts:Record<Severity,number>; findings:Finding[]; durability:'mongodb'|'volatile'; notes:string[]; }
 export const WEIGHTS:Record<Severity,number>={Critical:10,High:6,Medium:3,Low:1};
 export const RULES=[
  ['README documentation','Documentation','Medium',['README.md','README.rst','README.txt']],

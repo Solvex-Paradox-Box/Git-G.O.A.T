@@ -1,78 +1,65 @@
 # GIT G.O.A.T. — Build & Verification Report
 
-**Report date:** 2026-11-22 03:50 UTC  
-**Source checkpoint:** `896b7efaa1d87677c5b4feb7b615583839adec3a`  
-**Deployment:** not published.
+- **Report date:** 2026-11-22 04:19 UTC
+- **Application repository:** `Solvex-Paradox-Box/Git-G.O.A.T` (private GitHub repository)
+- **Production publication:** not published or requested.
 
-## Delivered
+## Delivered behavior
 
-The app uses the supplied artwork as its landing-page background, accepts a GitHub repository URL, runs a real read-only public-repository scan, shows evidence-linked findings and weighted status bars, and provides a finding-specific multiple-choice remediation guide. Each of the 25 built-in checks has a tailored question, two implementation choices, and a practical step checklist; unknown future findings get a safe generic fallback. Scope exclusions are a separate choice and require a rationale. Checklist ticks are local to the page and are **not** persisted or proof that a change occurred. Recording a decision does not edit GitHub or execute code.
+The app accepts a public GitHub repository URL, resolves its default branch to a commit SHA, and requests the complete recursive Git tree. If GitHub reports a truncated tree, the scan fails rather than calling a partial inventory complete. The report lists every inventoried Git blob path and Git-reported size, distinguishes text-inspected files from files not text-inspected, and provides per-file omission reasons. Inventory and exclusion detail lists are each capped at 10,000 entries, with truncation indicators.
 
-## Latest Full-Build scan evidence
+Eligible text inspection is bounded to 2,000 files, 1 MiB per file, 64 MiB aggregate, and concurrency 8. Source files are prioritized, followed by common documentation/configuration. The scanner does not download/extract the repository archive. Its file-presence, likely-secret-pattern, and JavaScript/TypeScript import checks are lightweight heuristics, not tests or proof that controls work.
 
-A read-only scan was run for `https://github.com/iamfather420-ctrl/Full-Build` through the live frontend API proxy on 2026-11-22:
+The interface separately shows checklist estimate complete and percent left. Findings have step-by-step manual guidance. Recording a choice does not edit GitHub, open a pull request, execute code, or independently verify completion. JSON report download and print are available.
 
-- API result: `HTTP 201`.
-- Commit: `1d728f6bf66b08be3171d4be61f800d38c738bf9`.
-- Inventory: 1,250 files from Git Trees API; text inspection capped at 180 files / 6 MiB; omitted files have exclusion reasons.
-- Result: weighted readiness `23 / 96 = 24%` (rounded). This is a heuristic repository scan score—not enterprise certification.
-- First remediation item: missing open-source license (`R02`, High). Its choices ask whether to use the organization’s already-approved license or seek legal/owner review. Its checklist says confirm ownership/distribution intent, choose only an approved license, then add and verify canonical license text and notices.
-- Other unresolved items include a security policy, contribution guide, code ownership, tests, dependency-update automation, CodeQL/static analysis, secret scanning, lint/format configuration, changelog, issue/PR templates, support guidance, security automation, architecture documentation, and license notices. Branch protection is **BLOCKED** without authorized settings access.
-- Potential hard-coded secrets returned **NOT RUN** because the bounded heuristic cannot verify the repository as secret-free; it does not scan history.
+## Latest live scan of `Full-Build`
 
-This is scan evidence only. The scan did not run repository code or change any repository file. As MongoDB is not configured, reports and decisions are volatile and will be lost on server restart.
+A fresh read-only scan was run through the current API on 2026-11-22 against `https://github.com/iamfather420-ctrl/Full-Build`:
 
-## Automated checks executed
+- Result: HTTP 201; report ID `6830a27b-dc7b-4063-8436-0ebb8b7ea22b`.
+- Branch and pinned commit: `main`, `f8c130fcb4c5286638b7a59583a27a4acf746a2d`.
+- Git-tree inventory: complete; 1,257 file paths and 19,823,818 Git-reported bytes. No inventory or exclusion list was truncated.
+- Bounded text inspection: 1,236 files and 9,047,250 bytes. The other 21 paths are inventoried as not text-inspected because they are image assets.
+- Execution: **BLOCKED**; `executedFiles: 0`. No source or asset was executed, and the app did not fall back to its host.
+- Checklist: **24% complete / 76% left**, rounded, under the fixed weighted heuristic. This is not an enterprise-readiness certification or a directly comparable grade.
+- Finding counts: Critical 1, High 8, Medium 10, Low 8.
 
-| Check | Status | Evidence |
-|---|---|---|
-| TypeScript check | PASS | `pnpm typecheck` completed successfully. |
-| Unit tests | PASS | 3 test files, 10 tests passed: rule catalog/weights, scoring and exclusions, and remediation coverage for all 25 rule types plus fallback. |
-| Frontend production build | PASS | `pnpm build` generated Vite production assets. |
-| Route manifest | PASS | `GET /manus-routes.json` returned the root route. |
-| Artwork | PASS | Served successfully from the app. |
-| Public repository scan | PASS | Full-Build scan above returned HTTP 201 at a pinned commit. |
-| Malformed/non-GitHub URL handling | PASS | Invalid host returned HTTP 400 in live API test. |
-| MongoDB persistence | IMPLEMENTED_UNVERIFIED | Adapter/indexes are present; no `MONGO_URL`, so database writes were not tested. |
-| Docker container build/start | NOT RUN | Dockerfile exists but image was not built or health-checked. |
-| GitHub OAuth, private-repo access, PR/write flow | BLOCKED | Not implemented or configured. |
-| OSV dependency advisory analysis | NOT RUN | Not implemented. |
-| Repository-code test/build execution and secure sandbox | BLOCKED | No isolated execution infrastructure; no scanned code was executed. |
-| Platform-level completion percentage | NOT RUN | No severity map exists for the complete application acceptance list; no fabricated score is reported. |
+### Assessment of the 21 omitted image assets
 
-## API
+The 21 files are `.webp`, `.png`, and `.jpg` assets, not executable source files. A read-only audit fetched each from the pinned commit with per-file and aggregate byte limits and confirmed that each download size matched the Git-reported blob size. The audit did not launch any file.
 
-- `GET /api/v1/health` — current capability flags.
-- `POST /api/v1/scans` — public GitHub URL scan.
-- `GET /api/v1/scans/{id}` — retrieve current scan record.
-- `POST /api/v1/scans/{id}/choices` — record a guided choice; justified exclusions update the finding, exclusions list and score.
+Pillow’s image verifier accepted **11 of 21** assets and reported ordinary dimensions for those. The other **10 remain inconclusive and were not marked corrupt**: six WebP files and two other image files could not be opened or identified by Pillow; two WebP launcher assets raised Pillow’s decompression-bomb dimension warning for 346,732,582,339 calculated pixels. FFprobe identified codec labels for those ten but returned zero width and height, so that check did not validate decodable image frames. No full decode was attempted for the anomalous files. They need source/export review or validation in the target project’s image toolchain before describing them as valid or corrupt. They remain binary assets outside text inspection, and none was run in a terminal.
 
-Endpoints are rate-limited and request-validated but **not authenticated**. UUIDs do not replace authorization. Do not deploy this as a multi-user private repository service.
+## Safe execution and provider fit
 
-## Component/file inventory
+A browser-visible terminal is not a security boundary. This app currently has no configured isolated runner and exposes no terminal. Do not enable shell execution through Node’s `vm`, a child process, or the web-app container. Meaningful checks generally run at project level—builds and test suites require dependencies, fixtures, and sometimes services—so individually launching each repository file would not be a reliable test.
 
-- Root: `.dockerignore`, `.env.example`, `.gitignore`, `Dockerfile`, `README.md`, `TODO.md`, `BUILD_REPORT.md`, `app.config.ts`, `index.html`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `plan.md`, `tsconfig.json`, `vite.config.ts`.
-- `public/`: `goat-background.png`, `manus-routes.json`, `openapi.json`.
-- `src/client/`: `main.tsx`, `styles.css`.
-- `src/server/`: `index.ts`, `scanner.ts`, `store.ts`.
-- `src/shared/`: `contracts.ts`, `scoring.ts`, `guidance.ts`, `contracts.test.ts`, `scoring.test.ts`, `guidance.test.ts`.
+For a future executor, Vercel Sandbox is a candidate to evaluate because Vercel documents per-sandbox Firecracker microVMs, a programmatic SDK, resource/time limits, and firewall policies. Network access is available by default and must be restricted deliberately for untrusted jobs. Sandbox usage is metered and plan-limited; confirm the actual Vercel plan and spend controls before enabling the feature. No sandbox was created or billed during this task. [1] [2]
 
-The requested `goat-platform`/`goat-service` Bit components and `bit use`/`bit run` commands are **BLOCKED**: Bit CLI is not installed here, and no Bit version or component API could be validated. The implementation is React/Vite + Express, not Bit Platform components.
+Neon can be considered for durable scan-report storage, but the application does **not** currently integrate with Neon. Its optional persistence implementation is MongoDB via `MONGO_URL`; Neon adoption requires a Postgres data layer, schema/migrations, and appropriate per-user report ownership and authorization. Neon’s current Vercel guidance recommends pooled standard Postgres TCP connections for Vercel Fluid compute. [3]
 
-## Scope limits and blockers
+Fly.io may be evaluated for a separate worker service, but it is not an automatic execution-security control. Fly’s shared-responsibility model assigns customers responsibility for machine image contents, security-feature configuration, and application-layer network security. Any Fly-based executor would still need carefully designed job isolation, restrictive network and secret access, resource/time/output caps, cleanup, and audit evidence. No Fly or Vercel deployment, Neon connection, or infrastructure change was made. [4]
 
-1. Current scanner uses GitHub’s Trees API—not commit-specific archive download/extraction. A large-repository refusal uses GitHub’s reported repository size and truncated-tree detection, not a measured archive byte-size ceiling. Do not claim the requested 200 MB archive guard is complete.
-2. Only bounded text content is inspected. The 25 static rules primarily confirm path presence, not effective operation. Secret detection is heuristic, and repository history is not scanned. OSV dependency vulnerability analysis, CI result inspection, and complete import-graph visualization are not implemented.
-3. MongoDB `MONGO_URL` is optional but absent. The in-process fallback is explicitly session-only. The broader requested users/sessions, repository connections, approvals, sandbox logs, repair orders, PRs, tests and verification-evidence schema is incomplete.
-4. GitHub OAuth, secure session/CSRF/user-authorization controls, private repository access and server-side token encryption are not implemented. No GitHub writes or PR creation are enabled.
-5. No isolated runner exists. No repository test/build/lint, deployment, migration, database seed or production script was run.
-6. The remediation guide provides manual checklists and choices; it does not automatically edit files, open branches/PRs, or mark a fix verified. Actual changes remain blocked pending safe GitHub authorization, user approval, execution infrastructure, and verification flows.
-7. No deployment declaration, container test or production publication was done. Publishing was not requested.
+## Verification performed
 
-## Security assessment
+- `pnpm typecheck` — **PASS**.
+- `pnpm test` — **PASS**, 4 test files and 14 tests.
+- `pnpm build` — **PASS**, Vite production build completed.
+- `public/openapi.json` parse — **PASS**.
+- `git diff --check` — **PASS** after the final documentation refresh.
+- `GET /api/v1/health` — **HTTP 200**; `publicReadOnlyScan:true`, `mongodb:false`, `githubOAuth:false`, `isolatedRunner:false`, `githubWrites:false`.
+- Live Full-Build scan — **HTTP 201** with complete tree inventory, explicit content coverage, all 1,257 inventory entries, blocked execution status, and zero executed files.
+- Image audit — size matched for all 21 assets; Pillow verification passed for 11; 10 remain unresolved as described above.
 
-The exercised initial scan was read-only and made no repository modifications. It executes no repository code. GitHub write capability and isolated execution are disabled. However, the service lacks authentication and per-user authorization; private multi-user deployment is unsafe until those controls are implemented and tested. A Dockerfile for hosting the web app does not provide or prove sandbox isolation.
+These automated application checks validate GIT G.O.A.T.’s code only. They do not establish that Full-Build or any scanned repository builds, passes tests, or is secure.
 
-## Setup
+## Current limitations
 
-For development, use Node.js 22 and pnpm 11: `pnpm install`; run `pnpm api` and `pnpm dev` in separate terminals. Vite is on port 3000 and proxies `/api` to Express on 3001. Optional MongoDB uses server-side `MONGO_URL`; without it, data is volatile. `README.md` includes the untested container instructions and capability gates.
+Private-repository OAuth and per-user ownership authorization are not implemented. The API is unauthenticated and UUID scan IDs are not an authorization mechanism, so this app is not ready to serve sensitive private repositories as a multi-user service. GitHub write/repair/PR actions, actual CI workflow results, dependency advisory analysis, comprehensive history-aware secret scanning, Neon persistence, and isolated execution are unavailable or unverified. MongoDB persistence is unverified because `MONGO_URL` is not configured. Production publication was not performed.
+
+## References
+
+[1]: https://vercel.com/docs/sandbox "Vercel Sandbox overview"
+[2]: https://vercel.com/docs/sandbox/concepts/security "Vercel Sandbox security model"
+[3]: https://neon.com/docs/guides/vercel-connection-methods "Connecting to Neon from Vercel"
+[4]: https://docs.fly.io/security/shared-responsibility "Fly.io shared responsibility model"
