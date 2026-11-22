@@ -63,9 +63,12 @@ app.get('/{*path}', (req, res, next) => {
   res.sendFile(join(root, 'index.html'), error => { if (error) next(error); });
 });
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Unhandled HTTP error:', err);
   if (res.headersSent) return;
-  res.status(500).json({ error: 'Internal server error.' });
+  const candidate = err as { status?: unknown; statusCode?: unknown };
+  const candidateStatus = typeof candidate.status === 'number' ? candidate.status : candidate.statusCode;
+  const status = typeof candidateStatus === 'number' && candidateStatus >= 400 && candidateStatus < 500 ? candidateStatus : 500;
+  if (status >= 500) console.error('Unhandled HTTP error:', err);
+  return res.status(status).json({ error: status === 400 ? 'Malformed or invalid request body.' : status === 413 ? 'Request body is too large.' : status >= 500 ? 'Internal server error.' : 'Request could not be processed.' });
 });
 const port = Number(process.env.PORT || 3001);
 app.listen(port, '0.0.0.0', () => console.log(`GIT G.O.A.T. API listening on ${port}`));
