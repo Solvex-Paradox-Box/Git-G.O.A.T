@@ -8,13 +8,17 @@ Requirements: Node.js 22 and pnpm 11. Run `pnpm install`, then run the API and f
 
 The public read-only scanner needs no credential for public repositories. It requires outbound internet access to GitHub. It inventories the Git tree at a pinned commit and inspects bounded text files only; see report exclusions and scope notes. It never runs repository code.
 
+## Guided remediation
+
+Each of the 25 built-in repository checks has a finding-specific multiple-choice question and concrete remediation checklist. Future/unknown findings receive a safe general checklist. Users can tick items as a personal on-page checklist; those ticks are not persisted or verified. Recorded choices are saved as volatile session data without MongoDB, or in MongoDB with `MONGO_URL`. A scope exclusion needs at least 10 characters of rationale and is added to the scan report. Choices and checklists do not edit GitHub or run code.
+
 ## Optional MongoDB
 
 Set `MONGO_URL` in the server environment to persist scans and guided choices in the `git_goat` database. The app uses `scans` and `guided_choices` collections with unique/search/retention indexes. Without MongoDB, records are session-only and will be lost when the server restarts. Do not enter the URI into frontend code or commit it.
 
 ## Container build (not yet tested)
 
-`docker build -t git-goat .` builds the client and service. Run with `docker run --rm -p 3000:3000 -e MONGO_URL='<your MongoDB URI>' git-goat` when MongoDB is available. The container exposes the web app/API on port 3000; its health endpoint is `/api/v1/health`. This container is for app hosting only and is **not** the repository execution sandbox.
+`docker build -t git-goat .` builds the client and service. Run with `docker run --rm -p 3000:3000 -e MONGO_URL='<your MongoDB URI>' git-goat` when MongoDB is available. The Docker container exposes the web app/API on port 3000; health endpoint is `/api/v1/health`. This container is for app hosting only and is **not** the repository execution sandbox.
 
 ## Current capability gates
 
