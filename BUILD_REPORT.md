@@ -30,6 +30,22 @@ The 21 files are `.webp`, `.png`, and `.jpg` assets, not executable source files
 
 Pillow’s image verifier accepted **11 of 21** assets and reported ordinary dimensions for those. The other **10 remain inconclusive and were not marked corrupt**: six WebP files and two other image files could not be opened or identified by Pillow; two WebP launcher assets raised Pillow’s decompression-bomb dimension warning for 346,732,582,339 calculated pixels. FFprobe identified codec labels for those ten but returned zero width and height, so that check did not validate decodable image frames. No full decode was attempted for the anomalous files. They need source/export review or validation in the target project’s image toolchain before describing them as valid or corrupt. They remain binary assets outside text inspection, and none was run in a terminal.
 
+Pillow verification passed for these 11 paths:
+
+- `artifacts/solvex/public/daisy-avatar.png`
+- `artifacts/solvex/public/daisy-haminja.png`
+- `artifacts/solvex/public/opengraph.jpg`
+- `artifacts/solvex/public/qr-base.png`
+- `artifacts/solvex/public/qr-eth.png`
+- `artifacts/solvex/public/qr-sol.png`
+- `artifacts/solvex/public/solvex-logo.png`
+- `attached_assets/extracted/enterprise/app/src/main/res/drawable/img_app_icon_asset_1782308570420.jpg`
+- `attached_assets/extracted/enterprise/app/src/main/res/drawable/img_hero_banner_1782308533434.jpg`
+- `attached_assets/extracted/enterprise/app/src/main/res/drawable/img_qkd_mesh_1782308554727.jpg`
+- `attached_assets/extracted/enterprise/app/src/main/res/drawable/img_security_badge_1782308543535.jpg`
+
+The unresolved six WebP assets are `app/src/main/res/mipmap-hdpi/ic_launcher_native.webp`, `app/src/main/res/mipmap-hdpi/ic_launcher_round_native.webp`, `app/src/main/res/mipmap-mdpi/ic_launcher_native.webp`, `app/src/main/res/mipmap-mdpi/ic_launcher_round_native.webp`, `app/src/main/res/mipmap-xhdpi/ic_launcher_native.webp`, and `app/src/main/res/mipmap-xhdpi/ic_launcher_round_native.webp`. The two WebP assets that triggered the extreme-dimension guard are `app/src/main/res/mipmap-xxhdpi/ic_launcher_native.webp` and `app/src/main/res/mipmap-xxhdpi/ic_launcher_round_native.webp`. The other two unresolved files are `app/src/test/screenshots/greeting.png` and `consolidated-site-output/solvex-header.jpg`.
+
 ## Safe execution and provider fit
 
 A browser-visible terminal is not a security boundary. This app currently has no configured isolated runner and exposes no terminal. Do not enable shell execution through Node’s `vm`, a child process, or the web-app container. Meaningful checks generally run at project level—builds and test suites require dependencies, fixtures, and sometimes services—so individually launching each repository file would not be a reliable test.
