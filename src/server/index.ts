@@ -4,9 +4,18 @@ import { z } from 'zod';
 import { join } from 'node:path';
 import { scanPublicRepository } from './scanner.js';
 import { getScan, recordChoice, saveScan } from './store.js';
-const app=express();app.disable('x-powered-by');app.use(express.json({limit:'32kb'}));app.use('/api/v1',rateLimit({windowMs:60_000,limit:30,standardHeaders:true,legacyHeaders:false}));app.use((_req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');next();});
+
+const app=express();
+app.disable('x-powered-by');
+// Webdev Preview sits behind one trusted proxy; trust the nearest hop for correct IP-based rate limiting.
+app.set('trust proxy',1);
+app.use(express.json({limit:'32kb'}));
+app.use('/api/v1',rateLimit({windowMs:60_000,limit:30,standardHeaders:true,legacyHeaders:false}));
+app.use((_req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');next();});
 app.get('/api/v1/health',(_req,res)=>res.json({status:'ok',capabilities:{publicReadOnlyScan:true,mongodb:!!process.env.MONGO_URL,githubOAuth:!!(process.env.GITHUB_CLIENT_ID&&process.env.GITHUB_CLIENT_SECRET),isolatedRunner:false,githubWrites:false}}));
 app.post('/api/v1/scans',async(req,res)=>{const p=z.object({repository:z.string().url().max(500)}).safeParse(req.body);if(!p.success)return res.status(400).json({error:'Invalid request',details:p.error.issues.map(x=>x.message)});try{return res.status(201).json(await saveScan(await scanPublicRepository(p.data.repository)));}catch(err){const e=err as Error&{status?:number};return res.status(e.status??500).json({error:e.message||'Scan failed',status:e.status??500});}});
 app.get('/api/v1/scans/:id',async(req,res)=>{try{const report=await getScan(req.params.id);if(!report)return res.status(404).json({error:'Scan not found or expired.'});res.json(report);}catch{res.status(503).json({error:'Scan storage unavailable.'});}});
 app.post('/api/v1/scans/:id/choices',async(req,res)=>{const p=z.object({findingId:z.string().max(40),choice:z.string().min(1).max(200),rationale:z.string().min(10).max(1000)}).safeParse(req.body);if(!p.success)return res.status(400).json({error:'Choose an option and provide a rationale of at least 10 characters.'});try{const saved=await recordChoice(req.params.id,p.data);if(!saved)return res.status(404).json({error:'Scan or finding not found.'});return res.status(201).json({status:'RECORDED',...saved});}catch{return res.status(503).json({error:'Choice could not be stored.'});}});
-app.use('/api',(_req,res)=>res.status(404).json({error:'API endpoint not found.'}));const root=join(process.cwd(),'dist/client');app.use(express.static(root));app.use((req,res,next)=>{if(req.method!=='GET')return next();res.sendFile(join(root,'index.html'),e=>{if(e)next();});});const port=Number(process.env.PORT||3001);app.listen(port,'0.0.0.0',()=>console.log(`GIT G.O.A.T. API listening on ${port}`));
+app.use('/api',(_req,res)=>res.status(404).json({error:'API endpoint not found.'}));
+const root=join(process.cwd(),'dist/client');app.use(express.static(root));app.use((req,res,next)=>{if(req.method!=='GET')return next();res.sendFile(join(root,'index.html'),e=>{if(e)next();});});
+const port=Number(process.env.PORT||3001);app.listen(port,'0.0.0.0',()=>console.log(`GIT G.O.A.T. API listening on ${port}`));
