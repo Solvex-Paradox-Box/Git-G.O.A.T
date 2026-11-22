@@ -1,106 +1,78 @@
-# GIT G.O.A.T. — Final Build Report
+# GIT G.O.A.T. — Build & Verification Report
 
-**Report date:** 2026-11-22 03:39 UTC  
-**Implementation checkpoint:** `fabcda69d557cfa247b9f3c539392625758274a1`  
-**Scope:** the user-approved image-led repo scanner and guided completion workflow, based on the attached broader specification.
+**Report date:** 2026-11-22 03:50 UTC  
+**Source checkpoint:** `896b7efaa1d87677c5b4feb7b615583839adec3a`  
+**Deployment:** not published.
 
-## Executive status
+## Delivered
 
-A runnable Webdev app now contains the supplied artwork as the landing-page backdrop, a GitHub URL search form, a real read-only public-repository scan API, evidence-linked findings, weighted completion bars, inventory exclusions, a JSON report download, and multiple-choice guided decisions. A public repository scan was run live. Scans are pinned to an observed commit; the initial stage does not run repository source or write to GitHub.
+The app uses the supplied artwork as its landing-page background, accepts a GitHub repository URL, runs a real read-only public-repository scan, shows evidence-linked findings and weighted status bars, and provides a finding-specific multiple-choice remediation guide. Each of the 25 built-in checks has a tailored question, two implementation choices, and a practical step checklist; unknown future findings get a safe generic fallback. Scope exclusions are a separate choice and require a rationale. Checklist ticks are local to the page and are **not** persisted or proof that a change occurred. Recording a decision does not edit GitHub or execute code.
 
-This is **not** the complete platform originally described. Private-repository OAuth, authenticated multi-user ownership, OSV advisories, archive download/extraction, isolated execution, repairs/PRs, actual test/build execution of repositories, a configured MongoDB instance and production deployment have not been verified or completed. The page labels important disabled capabilities. Do not use it as an enterprise certification or automated repair system.
+## Latest Full-Build scan evidence
 
-## Status convention
+A read-only scan was run for `https://github.com/iamfather420-ctrl/Full-Build` through the live frontend API proxy on 2026-11-22:
 
-Only these statuses are used below: **PASS, FAIL, BLOCKED, NOT RUN, IMPLEMENTED_UNVERIFIED, NOT REQUIRED**. A PASS requires execution evidence. A presence-only check is not evidence that a control is effective.
+- API result: `HTTP 201`.
+- Commit: `1d728f6bf66b08be3171d4be61f800d38c738bf9`.
+- Inventory: 1,250 files from Git Trees API; text inspection capped at 180 files / 6 MiB; omitted files have exclusion reasons.
+- Result: weighted readiness `23 / 96 = 24%` (rounded). This is a heuristic repository scan score—not enterprise certification.
+- First remediation item: missing open-source license (`R02`, High). Its choices ask whether to use the organization’s already-approved license or seek legal/owner review. Its checklist says confirm ownership/distribution intent, choose only an approved license, then add and verify canonical license text and notices.
+- Other unresolved items include a security policy, contribution guide, code ownership, tests, dependency-update automation, CodeQL/static analysis, secret scanning, lint/format configuration, changelog, issue/PR templates, support guidance, security automation, architecture documentation, and license notices. Branch protection is **BLOCKED** without authorized settings access.
+- Potential hard-coded secrets returned **NOT RUN** because the bounded heuristic cannot verify the repository as secret-free; it does not scan history.
 
-## Component and file inventory
+This is scan evidence only. The scan did not run repository code or change any repository file. As MongoDB is not configured, reports and decisions are volatile and will be lost on server restart.
 
-The project has one Webdev project and these app/source files:
+## Automated checks executed
 
-- `.dockerignore`, `.env.example`, `.gitignore`, `Dockerfile`, `README.md`, `TODO.md`, `BUILD_REPORT.md`, `app.config.ts`, `index.html`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `plan.md`, `tsconfig.json`, `vite.config.ts`.
-- `public/goat-background.png`, `public/manus-routes.json`, `public/openapi.json`.
-- `src/client/main.tsx`, `src/client/styles.css`.
-- `src/server/index.ts`, `src/server/scanner.ts`, `src/server/store.ts`.
-- `src/shared/contracts.ts`, `src/shared/scoring.ts`, `src/shared/contracts.test.ts`, `src/shared/scoring.test.ts`.
-
-The named `goat-platform` and `goat-service` Bit components and requested `bit use` / `bit run` commands are **BLOCKED**: the Bit CLI is not installed in the implementation environment, and the component definitions/imports have not been validated against an actual Bit Platform version. This project instead uses React/Vite and Express.
-
-## Implemented feature assessment
-
-| Area | Status | Evidence / limitation |
+| Check | Status | Evidence |
 |---|---|---|
-| Image-led entry page | PASS | The provided image is present at `public/goat-background.png`; served with HTTP 200 in live check. The landing page centers the GitHub repository search and explains read-only behavior. |
-| Repository-agnostic URL validation | PASS | Live API rejects non-GitHub hosts with HTTP 400. Scanner accepts `https://github.com/{owner}/{repo}` URLs and does not hardwire a repository. |
-| Public GitHub read-only scanning | PASS | Live `POST /api/v1/scans` returned HTTP 201 for `https://github.com/octocat/Hello-World`. Resolved commit: `7fd1a60b01f91b314f59955a4e4d4e80d8edf11d`; inventory: 1 file. No code execution or repository mutation occurs in this scan path. |
-| File inventory and exclusions | IMPLEMENTED_UNVERIFIED | Complete inventory is taken from Git Trees API when the response is not truncated. Content retrieval is bounded to 180 text files / 6 MiB; un-read files are enumerated. Archive retrieval is not implemented. Size refusal uses GitHub's reported repo size plus the truncated-tree check, not a measured compressed archive-size check. |
-| Deterministic repository rules | PASS | The code has 25 named deterministic path-presence rules; catalog tests verify exactly 25, unique names, valid severities, and evidence candidates. Checks prove presence only. |
-| Secret scan | IMPLEMENTED_UNVERIFIED | A bounded text heuristic is implemented. No match produces `NOT RUN`, not a clean bill of health. Repository history, full archive contents and all files are not scanned. |
-| Dependency/import analysis | IMPLEMENTED_UNVERIFIED | A bounded JS/TS import-edge approximation is implemented when source text is read. A dependency vulnerability analysis using OSV is not implemented; it remains **NOT RUN**. No full graph visualization is implemented. |
-| Readiness score | PASS | Shared deterministic scoring function uses Critical=10, High=6, Medium=3, Low=1. Only `VERIFIED_COMPLETE` weight is in the numerator; blocked/unverified remain in scope; only justified `NOT_REQUIRED` items are excluded. Tests cover blocked and excluded cases. |
-| Guided multiple-choice decisions | PASS | Live choice endpoint records choices. A “Not in scope” decision requires >=10 characters, changes a finding to `NOT_REQUIRED`, stores the reason in exclusions and recomputes the score. Choice recording itself does not modify GitHub. |
-| Report download | PASS | Frontend exports the returned scan record as JSON; print summary also available. |
-| MongoDB persistence | IMPLEMENTED_UNVERIFIED | MongoDB adapter, collections, indexes and 365-day TTL metadata are implemented behind `MONGO_URL`. No `MONGO_URL` was configured, so live scan/choice persistence was volatile and lost on process restart. DB persistence was not tested. |
-| GitHub OAuth/private repositories | BLOCKED | No GitHub OAuth flow, callback, encrypted token store, authenticated sessions or private-repository authorization path was implemented/configured. Health endpoint reports OAuth disabled. Private scans require OAuth and cannot proceed. |
-| Authenticated multi-user REST API | FAIL | Endpoints are rate-limited and request-validated, but application authentication/authorization, CSRF/session security and user ownership isolation are not implemented. Do not expose this service as a multi-tenant private-data system. |
-| Sandbox execution | BLOCKED | No isolated runner exists. No repository command, test, build, lint, deployment, migration or production script was executed. No Docker confinement is claimed. |
-| Repair branches, PRs and GitHub writes | BLOCKED | No GitHub write scopes, approval ledger, repair engine, branch creation or PR API path exists. Health endpoint reports writes disabled; UI says changes are unavailable. |
-| Audit persistence and retention | IMPLEMENTED_UNVERIFIED | Optional Mongo collections and TTL indexes are present but untested because MongoDB is unavailable. Other required records (users, connections, approvals, runs, PRs, tests and verification evidence) are not implemented. |
-| API documentation | PASS | `public/openapi.json` is served by the running Vite development server. It documents health, scans, report lookup and decision recording. It does not document unimplemented endpoints. |
-| Bit components/commands | BLOCKED | No `bit` executable/version is installed; no Bit integration is claimed. |
-| Production deployment | NOT RUN | The Dockerfile and runtime instructions are present, but no container build, production health check, Webdev deployment declaration, or publication was performed. Publishing was not requested. |
+| TypeScript check | PASS | `pnpm typecheck` completed successfully. |
+| Unit tests | PASS | 3 test files, 10 tests passed: rule catalog/weights, scoring and exclusions, and remediation coverage for all 25 rule types plus fallback. |
+| Frontend production build | PASS | `pnpm build` generated Vite production assets. |
+| Route manifest | PASS | `GET /manus-routes.json` returned the root route. |
+| Artwork | PASS | Served successfully from the app. |
+| Public repository scan | PASS | Full-Build scan above returned HTTP 201 at a pinned commit. |
+| Malformed/non-GitHub URL handling | PASS | Invalid host returned HTTP 400 in live API test. |
+| MongoDB persistence | IMPLEMENTED_UNVERIFIED | Adapter/indexes are present; no `MONGO_URL`, so database writes were not tested. |
+| Docker container build/start | NOT RUN | Dockerfile exists but image was not built or health-checked. |
+| GitHub OAuth, private-repo access, PR/write flow | BLOCKED | Not implemented or configured. |
+| OSV dependency advisory analysis | NOT RUN | Not implemented. |
+| Repository-code test/build execution and secure sandbox | BLOCKED | No isolated execution infrastructure; no scanned code was executed. |
+| Platform-level completion percentage | NOT RUN | No severity map exists for the complete application acceptance list; no fabricated score is reported. |
 
-## Test execution evidence
+## API
 
-- `pnpm typecheck` — **PASS**, executed on 2026-11-22.
-- `pnpm test` — **PASS**, 2 test files, 7 tests total: 25-rule catalog/weight checks and score numerator, blocked-item denominator and justified-exclusion cases.
-- `pnpm build` — **PASS**, Vite production frontend build generated `dist/client` (build output and command exit code observed).
-- Runtime route manifest — **PASS**, `GET /manus-routes.json` returned the declared root route.
-- Uploaded artwork serving — **PASS**, `GET /goat-background.png` returned HTTP 200.
-- API health — **PASS**, returned `publicReadOnlyScan:true`, `mongodb:false`, `githubOAuth:false`, `isolatedRunner:false`, `githubWrites:false`.
-- Live public scan — **PASS**, `POST /api/v1/scans` returned HTTP 201 for the public test repository above. Report contained 25 deterministic rules plus additional findings; score was `0/95 = 0%` for this one-file test repository. Secret heuristic status correctly returned `NOT RUN`.
-- Exclusion integration — **PASS**, submitted a user exclusion with 69-character justification; server returned `NOT_REQUIRED`, updated the excluded finding and report score, and subsequent GET reflected the updated volatile report.
-- Invalid-host rejection — **PASS**, non-GitHub host returned HTTP 400.
-- Private/public authorization tests, auth/permission escalation tests, database integration, archive-size tests, OSV integration, sandbox isolation/resource/network tests, actual repair/PR tests, and scan/build execution against repository code — **NOT RUN**.
+- `GET /api/v1/health` — current capability flags.
+- `POST /api/v1/scans` — public GitHub URL scan.
+- `GET /api/v1/scans/{id}` — retrieve current scan record.
+- `POST /api/v1/scans/{id}/choices` — record a guided choice; justified exclusions update the finding, exclusions list and score.
 
-These tests are not an enterprise security acceptance suite. No unexecuted test is represented as passed.
+Endpoints are rate-limited and request-validated but **not authenticated**. UUIDs do not replace authorization. Do not deploy this as a multi-user private repository service.
 
-## Security and authentication assessment
+## Component/file inventory
 
-The initial scan uses unauthenticated GitHub API access for public repositories and does not execute or change their contents. GitHub writes and execution are disabled. The scanner bounds text content reads and fails if the Git tree is truncated. GitHub's reported repository size is a heuristic guard, not an archive-size measurement.
+- Root: `.dockerignore`, `.env.example`, `.gitignore`, `Dockerfile`, `README.md`, `TODO.md`, `BUILD_REPORT.md`, `app.config.ts`, `index.html`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `plan.md`, `tsconfig.json`, `vite.config.ts`.
+- `public/`: `goat-background.png`, `manus-routes.json`, `openapi.json`.
+- `src/client/`: `main.tsx`, `styles.css`.
+- `src/server/`: `index.ts`, `scanner.ts`, `store.ts`.
+- `src/shared/`: `contracts.ts`, `scoring.ts`, `guidance.ts`, `contracts.test.ts`, `scoring.test.ts`, `guidance.test.ts`.
 
-The app/API is not safe for private multi-user deployment: there is no application login/authorization, no user-to-scan ownership enforcement, no GitHub OAuth, no OAuth token encryption, and no CSRF protection. A UUID is not a substitute for authorization. Do not deploy with private repository data or enable writes until these controls are implemented and independently tested.
+The requested `goat-platform`/`goat-service` Bit components and `bit use`/`bit run` commands are **BLOCKED**: Bit CLI is not installed here, and no Bit version or component API could be validated. The implementation is React/Vite + Express, not Bit Platform components.
 
-## API inventory
+## Scope limits and blockers
 
-- `GET /api/v1/health` — service health and current capability flags.
-- `POST /api/v1/scans` — validate a GitHub URL; scan public repository at current default-branch commit.
-- `GET /api/v1/scans/{id}` — retrieve a report by ID.
-- `POST /api/v1/scans/{id}/choices` — record a guided decision; `Not in scope right now` requires a substantive rationale and is added to exclusions.
+1. Current scanner uses GitHub’s Trees API—not commit-specific archive download/extraction. A large-repository refusal uses GitHub’s reported repository size and truncated-tree detection, not a measured archive byte-size ceiling. Do not claim the requested 200 MB archive guard is complete.
+2. Only bounded text content is inspected. The 25 static rules primarily confirm path presence, not effective operation. Secret detection is heuristic, and repository history is not scanned. OSV dependency vulnerability analysis, CI result inspection, and complete import-graph visualization are not implemented.
+3. MongoDB `MONGO_URL` is optional but absent. The in-process fallback is explicitly session-only. The broader requested users/sessions, repository connections, approvals, sandbox logs, repair orders, PRs, tests and verification-evidence schema is incomplete.
+4. GitHub OAuth, secure session/CSRF/user-authorization controls, private repository access and server-side token encryption are not implemented. No GitHub writes or PR creation are enabled.
+5. No isolated runner exists. No repository test/build/lint, deployment, migration, database seed or production script was run.
+6. The remediation guide provides manual checklists and choices; it does not automatically edit files, open branches/PRs, or mark a fix verified. Actual changes remain blocked pending safe GitHub authorization, user approval, execution infrastructure, and verification flows.
+7. No deployment declaration, container test or production publication was done. Publishing was not requested.
 
-All `/api/v1` requests use a rate limit (30 per minute per process). Requests use Zod validation. These endpoints are not authenticated. OAuth, repo registration, dependency analysis, approvals, sandbox, repair, branch/PR, test execution, rescan verification and complete audit/report APIs remain unimplemented or blocked.
+## Security assessment
 
-## Database and persistence
+The exercised initial scan was read-only and made no repository modifications. It executes no repository code. GitHub write capability and isolated execution are disabled. However, the service lacks authentication and per-user authorization; private multi-user deployment is unsafe until those controls are implemented and tested. A Dockerfile for hosting the web app does not provide or prove sandbox isolation.
 
-If `MONGO_URL` is set, the code connects to database `git_goat`, creates `scans` and `guided_choices` collections, indexes scan ID/repository/time, and applies 365-day TTL metadata. The URI must remain server-side. At build time/test time `MONGO_URL` was absent, so live persistence status is **IMPLEMENTED_UNVERIFIED**. Without Mongo, in-process session state is used and clearly labeled volatile in the UI. The broader requested user/session/repository/approval/sandbox/PR/test/evidence/audit schema is not complete.
+## Setup
 
-## Deployment readiness
-
-Development setup: Node 22 + pnpm 11; run `pnpm install`, then `pnpm api` and `pnpm dev`. Vite listens on 3000 and proxies `/api` to Express on 3001. Dockerfile builds the client and serves it with the Express API on port 3000. The Docker image/runtime has not been built or health-tested. No production deployment was declared or published. MongoDB, OAuth, secure multi-user sessions, and sandbox execution are not ready for deployment.
-
-## Completion score for the platform build
-
-**NOT RUN.** No severity assignment was approved for every platform-level acceptance requirement, and many capabilities are BLOCKED or NOT RUN. The 0% score from the single-file public test repository is a repository scan result, not a score for the GIT G.O.A.T. implementation. No platform completion percentage is claimed.
-
-## Outstanding blockers
-
-1. Configure MongoDB `MONGO_URL` and execute database persistence tests.
-2. Implement and test GitHub OAuth, secure application sessions, incremental permissions, server-side AES-256-GCM token encryption, authorization, CSRF and user ownership.
-3. Implement dependency lockfile analysis with OSV and actual commit-specific archive retrieval with a measured 200 MB download ceiling.
-4. Implement high-confidence repository rules and source-language analyses beyond the current presence/heuristic subset; inspect CI evidence where authorized.
-5. Provision a genuinely isolated runner and verify network/resource/time/credential restrictions; Docker alone is not sufficient evidence.
-6. Implement explicit approval/audit controls, repair proposals and `goat/repair-*` branches/PRs; enforce no-merge/no-sensitive-production-changes policies.
-7. Implement rescan, before/after verification, actual test/build evidence and downloadable comprehensive final audit reports.
-8. Complete API authentication/authorization, private scan ownership and security regression tests.
-9. Validate Bit Platform components/commands using the actual supported Bit version.
-10. Configure and test a production deployment only when requested.
+For development, use Node.js 22 and pnpm 11: `pnpm install`; run `pnpm api` and `pnpm dev` in separate terminals. Vite is on port 3000 and proxies `/api` to Express on 3001. Optional MongoDB uses server-side `MONGO_URL`; without it, data is volatile. `README.md` includes the untested container instructions and capability gates.
