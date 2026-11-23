@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { join } from 'node:path';
 import { scanPublicRepository } from './scanner.js';
 import { getScan, recordChoice, saveScan } from './store.js';
+import { AssessmentShareError, shareAssessment } from './assessment-share.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -45,6 +46,20 @@ app.get('/api/v1/scans/:id', async (req, res) => {
     if (!report) return res.status(404).json({ error: 'Scan not found or expired.' });
     return res.json(report);
   } catch (err) { console.error('Scan lookup failed:', err); return res.status(503).json({ error: 'Scan storage unavailable.' }); }
+});
+app.post('/api/v1/scans/:id/share', async (req, res) => {
+  try {
+    const report = await getScan(req.params.id);
+    if (!report) return res.status(404).json({ status: 'BLOCKED', error: 'Scan not found or expired; no assessment was submitted.' });
+    const shared = await shareAssessment(report);
+    return res.status(201).json(shared);
+  } catch (err) {
+    if (err instanceof AssessmentShareError) {
+      return res.status(err.httpStatus).json({ status: 'BLOCKED', error: err.message });
+    }
+    console.error('Assessment sharing failed:', err);
+    return res.status(503).json({ status: 'BLOCKED', error: 'Assessment sharing failed; persistence and readback are unverified.' });
+  }
 });
 app.post('/api/v1/scans/:id/choices', async (req, res) => {
   const parsed = z.object({ findingId: z.string().max(40), choice: z.string().min(1).max(200), rationale: z.string().min(10).max(1000) }).safeParse(req.body);
