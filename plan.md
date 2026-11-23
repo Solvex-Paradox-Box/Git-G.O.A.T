@@ -35,5 +35,13 @@ Three alternatives: terminal observatory (0.06), editorial security brief (0.04)
 - Wordmark & logo: retain the distinctive user-supplied G.O.A.T. artwork as the brand mark/background; do not recreate its text in a default typeface.
 - Signature brand color: warm amber/gold from the supplied artwork.
 
+## Q&A-approved change workflow
+- Keep repository scanning read-only. The user selects a finding, answers its guided questions, and the app records the answers as authorization for that specific proposed remediation; do not treat answers as broad permission for unrelated edits.
+- Generate a patch in a temporary workspace, run applicable checks in a Vercel Sandbox isolated microVM, capture logs and a diff, then push only that remediation to a dedicated `goat/repair-*` branch and create or update a pull request. Never merge or deploy automatically. A failed or unavailable check blocks automatic PR creation and is reported accurately.
+- Do not pass GitHub tokens, application secrets, or production credentials into the code-execution sandbox. Restrict outbound network access to the minimum needed for source/dependency retrieval; cap duration/resources and clean up workspaces after retaining redacted evidence.
+- Add a visible **Connectors** control that lets a user choose and configure GitHub, Vercel Sandbox, and Neon independently. Show connection/permission status and ask for protected credentials only when the selected feature needs them. Do not create provider resources or incur usage charges without a separate user confirmation.
+- Use Neon Postgres for durable workflow, approval, job, PR, and audit state when configured; keep public read-only scans usable without connector setup. Do not silently fall back to process-local storage for actions that require durable authorization or job state.
+- Use a GitHub App with minimum repository permissions for metadata/content branch operations and pull-request creation; scope installation access to selected repositories. OAuth/App credentials remain server-side and are collected through protected project setup.
+
 ## Material constraints
-OAuth app credentials, `MONGO_URL`, and isolated execution infrastructure are not currently configured. Features requiring them remain blocked/unverified until configured and tested. No repository code will be run during scanning; no GitHub changes will occur without explicit user approval.
+The connector chooser is a product capability; it does not imply the provider accounts are already connected. GitHub App credentials, Neon connection string, and Vercel Sandbox authorization must be configured and verified before live write/execution features are enabled. Until then those capabilities remain explicitly unavailable. No repository code will run during scanning; changes are limited to Q&A-authorized remediations on branches/PRs, with no automatic merge or deployment.
