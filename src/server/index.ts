@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { join } from 'node:path';
 import { scanPublicRepository } from './scanner.js';
 import { getScan, recordChoice, saveScan } from './store.js';
+import { AssessmentShareError, shareAssessment } from './assessment-share.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -17,7 +18,21 @@ app.use((_req, res, next) => {
 });
 app.use(express.json({ limit: '32kb' }));
 app.use('/api/v1', rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }));
-app.get('/api/v1/health', (_req, res) => res.json({ status: 'ok', capabilities: { publicReadOnlyScan: true, mongodb: !!process.env.MONGO_URL, githubOAuth: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET), isolatedRunner: false, githubWrites: false } }));
+app.get('/api/v1/health', (_req, res) => res.json({
+  status: 'ok',
+  capabilities: {
+    publicReadOnlyScan: true,
+    mongodb: !!process.env.MONGO_URL,
+    githubOAuth: {
+      available: false,
+      implemented: false,
+      credentialsConfigured: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+      status: 'NOT_IMPLEMENTED',
+    },
+    isolatedRunner: false,
+    githubWrites: false,
+  },
+}));
 
 // Each scan can fan out to GitHub. Bound aggregate process-level work as well as per-scan work.
 const maxConcurrentScans = 3;
@@ -46,6 +61,20 @@ app.get('/api/v1/scans/:id', async (req, res) => {
     return res.json(report);
   } catch (err) { console.error('Scan lookup failed:', err); return res.status(503).json({ error: 'Scan storage unavailable.' }); }
 });
+app.post('/api/v1/scans/:id/share', async (req, res) => {
+  try {
+    const report = await getScan(req.params.id);
+    if (!report) return res.status(404).json({ status: 'BLOCKED', error: 'Scan not found or expired; no assessment was submitted.' });
+    const shared = await shareAssessment(report);
+    return res.status(201).json(shared);
+  } catch (err) {
+    if (err instanceof AssessmentShareError) {
+      return res.status(err.httpStatus).json({ status: 'BLOCKED', error: err.message });
+    }
+    console.error('Assessment sharing failed:', err);
+    return res.status(503).json({ status: 'BLOCKED', error: 'Assessment sharing failed; persistence and readback are unverified.' });
+  }
+});
 app.post('/api/v1/scans/:id/choices', async (req, res) => {
   const parsed = z.object({ findingId: z.string().max(40), choice: z.string().min(1).max(200), rationale: z.string().min(10).max(1000) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Choose an option and provide a rationale of at least 10 characters.' });
@@ -71,4 +100,8 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   return res.status(status).json({ error: status === 400 ? 'Malformed or invalid request body.' : status === 413 ? 'Request body is too large.' : status >= 500 ? 'Internal server error.' : 'Request could not be processed.' });
 });
 const port = Number(process.env.PORT || 3001);
-app.listen(port, '0.0.0.0', () => console.log(`GIT G.O.A.T. API listening on ${port}`));
+if (!process.env.VERCEL) {
+  app.listen(port, '0.0.0.0', () => console.log(`GIT G.O.A.T. API listening on ${port}`));
+}
+
+export default app;
