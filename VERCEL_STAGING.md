@@ -1,6 +1,6 @@
 # Vercel staging deployment
 
-The GitHub Actions workflow runs validation first. It can deploy non-`main` branch pushes and manual runs to a Vercel **Preview** deployment, not Production. The deployment job is intentionally disabled until the repository variable `VERCEL_STAGING_ENABLED` is set to the exact value `true`.
+The GitHub Actions workflow runs validation first. It can deploy non-`main` branch pushes and manual runs to a Vercel **Preview** deployment, not Production. Automatic non-`main` deployments are disabled until the repository variable `VERCEL_STAGING_ENABLED` is set to the exact value `true`. A manual dispatch can enable staging for that single run with the `VERCEL_STAGING_ENABLED` boolean input, without enabling future automatic deployments.
 
 Before enabling it, create or select the Vercel project for this app and add these secrets to the GitHub Actions environment named `staging`:
 
