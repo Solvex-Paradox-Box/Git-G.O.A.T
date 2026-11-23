@@ -45,3 +45,59 @@ jobs:
 
       - name: Build production frontend
         run: pnpm build
+
+  deploy-staging:
+    name: Deploy Vercel staging
+    runs-on: ubuntu-latest
+    needs: validate
+    if: ${{ vars.VERCEL_STAGING_ENABLED == 'true' && ((github.event_name == 'push' && github.ref != 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main')) }}
+    environment:
+      name: staging
+    permissions:
+      contents: read
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Verify Vercel staging configuration
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "Missing Vercel Actions secrets. Configure VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID before enabling staging."
+            exit 1
+          fi
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@47.0.5
+
+      - name: Pull Vercel preview settings
+        run: vercel pull --yes --environment=preview
+
+      - name: Build Vercel preview
+        run: vercel build
+
+      - name: Deploy Vercel staging preview
+        id: deploy
+        run: |
+          vercel deploy --prebuilt --yes | tee vercel-deploy.log
+          url="$(grep -Eo 'https://[^[:space:]]+\.vercel\.app' vercel-deploy.log | tail -n 1)"
+          if [ -n "$url" ]; then
+            echo "url=$url" >> "$GITHUB_OUTPUT"
+            echo "Vercel staging deployment: $url" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Deployment command completed but did not return a Vercel URL." >> "$GITHUB_STEP_SUMMARY"
+          fi

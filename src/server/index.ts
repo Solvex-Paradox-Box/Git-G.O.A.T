@@ -100,4 +100,8 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   return res.status(status).json({ error: status === 400 ? 'Malformed or invalid request body.' : status === 413 ? 'Request body is too large.' : status >= 500 ? 'Internal server error.' : 'Request could not be processed.' });
 });
 const port = Number(process.env.PORT || 3001);
-app.listen(port, '0.0.0.0', () => console.log(`GIT G.O.A.T. API listening on ${port}`));
+if (!process.env.VERCEL) {
+  app.listen(port, '0.0.0.0', () => console.log(`GIT G.O.A.T. API listening on ${port}`));
+}
+
+export default app;
