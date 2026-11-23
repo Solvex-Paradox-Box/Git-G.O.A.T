@@ -18,7 +18,21 @@ app.use((_req, res, next) => {
 });
 app.use(express.json({ limit: '32kb' }));
 app.use('/api/v1', rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }));
-app.get('/api/v1/health', (_req, res) => res.json({ status: 'ok', capabilities: { publicReadOnlyScan: true, mongodb: !!process.env.MONGO_URL, githubOAuth: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET), isolatedRunner: false, githubWrites: false } }));
+app.get('/api/v1/health', (_req, res) => res.json({
+  status: 'ok',
+  capabilities: {
+    publicReadOnlyScan: true,
+    mongodb: !!process.env.MONGO_URL,
+    githubOAuth: {
+      available: false,
+      implemented: false,
+      credentialsConfigured: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+      status: 'NOT_IMPLEMENTED',
+    },
+    isolatedRunner: false,
+    githubWrites: false,
+  },
+}));
 
 // Each scan can fan out to GitHub. Bound aggregate process-level work as well as per-scan work.
 const maxConcurrentScans = 3;
